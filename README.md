@@ -2,6 +2,8 @@
 
 An interactive visualization demonstrating how shock waves (Mach cones) form when an object moves through a medium faster than the speed of sound.
 
+**[Live Demo](https://kousen.github.io/shockwaves/)**
+
 ## Overview
 
 This simulation shows circular pressure waves emanating from a source point. As the source velocity increases past Mach 1, the waves pile up and form the characteristic cone shape that produces sonic booms.

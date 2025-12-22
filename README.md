@@ -8,7 +8,24 @@ This simulation shows circular pressure waves emanating from a source point. As 
 
 ## Running the Simulation
 
-Simply open `index.html` in any modern web browser. No server or build process required.
+**Option 1: Local server (recommended)**
+
+Use any local server. For example:
+```bash
+# Python 3
+python -m http.server 8000
+
+# Node.js (if http-server is installed)
+npx http-server
+
+# PHP
+php -S localhost:8000
+```
+Then open `http://localhost:8000` in your browser.
+
+**Option 2: Direct file access**
+
+Open `index.html` directly in Firefox or Safari. (Chrome blocks local script loading due to CORS restrictions.)
 
 ## Features
 

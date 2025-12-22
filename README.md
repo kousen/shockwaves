@@ -2,7 +2,7 @@
 
 An interactive visualization demonstrating how shock waves (Mach cones) form when an object moves through a medium faster than the speed of sound.
 
-**[Live Demo](https://kousen.github.io/shockwaves/)**
+**<a href="https://kousen.github.io/shockwaves/" target="_blank">Live Demo</a>**
 
 ## Overview
 

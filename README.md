@@ -62,9 +62,26 @@ Quick-access buttons for real-world examples:
 - **SR-71** - M = 2.8 (Blackbird reconnaissance aircraft)
 
 ### Audio
-- Each wave emission plays a tone
+- Each wave emission plays a tone at the source
 - Frequency increases with Mach number (200 Hz at M=0 → 800 Hz at M=3)
-- Demonstrates how source speed affects perceived pitch
+- Observer hears Doppler-shifted tones based on position
+- Sonic boom sound when shock wave passes observer
+
+### Observer Point
+A draggable green crosshair that lets you "listen" to waves at any position:
+
+- **Drag to reposition** - Click and drag the observer anywhere on the canvas
+- **Wave detection** - Flashes green each time a wavefront passes through
+- **Frequency measurement** - Displays observed waves per second
+- **Doppler shift readout** - Shows percentage shift and direction (blue/red)
+- **Sonic boom** - Screen flashes and plays boom sound when multiple waves arrive simultaneously (supersonic mode)
+
+**Try this experiment:**
+1. Enable sound
+2. Set Mach to 2.0 (supersonic)
+3. Use Moving Source mode
+4. Position the observer in the path of the source
+5. Watch and listen as the Mach cone sweeps past - you'll experience the "boom"
 
 ## The Physics
 
@@ -110,7 +127,9 @@ The simulation visualizes the Doppler effect through color:
 shockwaves/
 ├── index.html    # Main HTML page
 ├── sketch.js     # p5.js simulation code
-└── README.md     # This file
+├── README.md     # This file
+├── LICENSE       # MIT License
+└── .gitignore    # Git ignore rules
 ```
 
 ### Browser Compatibility

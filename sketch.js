@@ -30,6 +30,15 @@ let audioContext = null;
 let audioEnabled = false;
 let audioButton;
 
+// Observer point
+let observerX, observerY;
+let draggingObserver = false;
+let observerFlash = 0;
+let observerWaveHits = [];      // Timestamps of wave arrivals
+let observedFrequency = 0;
+let lastPulseDistances = new Map();  // Track each pulse's distance to observer
+let sonicBoomFlash = 0;
+
 function setup() {
     let canvas = createCanvas(900, 500);
     canvas.parent('container');
@@ -37,6 +46,10 @@ function setup() {
     sourceStartX = 150;
     sourceX = sourceStartX;
     sourceY = height / 2;
+
+    // Initialize observer position (right side of canvas)
+    observerX = width - 200;
+    observerY = height / 2;
 
     // Create controls container
     let controls = createDiv('');
@@ -164,6 +177,25 @@ function toggleAudio() {
     audioButton.html(audioEnabled ? 'Sound: On' : 'Sound: Off');
 }
 
+// Mouse handling for dragging observer
+function mousePressed() {
+    let d = dist(mouseX, mouseY, observerX, observerY);
+    if (d < 20) {
+        draggingObserver = true;
+    }
+}
+
+function mouseDragged() {
+    if (draggingObserver) {
+        observerX = constrain(mouseX, 20, width - 20);
+        observerY = constrain(mouseY, 20, height - 20);
+    }
+}
+
+function mouseReleased() {
+    draggingObserver = false;
+}
+
 function playPulseSound() {
     if (!audioEnabled || !audioContext) return;
 
@@ -188,14 +220,118 @@ function playPulseSound() {
     oscillator.stop(now + 0.1);
 }
 
+function playObserverSound(dopplerShift) {
+    if (!audioEnabled || !audioContext) return;
+
+    // Base frequency modified by Doppler shift
+    // dopplerShift > 1 means approaching (higher pitch), < 1 means receding (lower pitch)
+    let baseFreq = 400;
+    let frequency = baseFreq * dopplerShift;
+    frequency = constrain(frequency, 100, 1200);
+
+    let oscillator = audioContext.createOscillator();
+    let gainNode = audioContext.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    oscillator.frequency.value = frequency;
+    oscillator.type = 'sine';
+
+    let now = audioContext.currentTime;
+    gainNode.gain.setValueAtTime(0.12, now);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+
+    oscillator.start(now);
+    oscillator.stop(now + 0.08);
+}
+
+function playSonicBoom() {
+    if (!audioEnabled || !audioContext) return;
+
+    // Create a "boom" sound - low frequency burst
+    let oscillator = audioContext.createOscillator();
+    let gainNode = audioContext.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    oscillator.frequency.value = 80;
+    oscillator.type = 'sawtooth';
+
+    let now = audioContext.currentTime;
+    gainNode.gain.setValueAtTime(0.3, now);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+
+    oscillator.start(now);
+    oscillator.stop(now + 0.3);
+}
+
+function calculateDopplerShift(pulseX, pulseY) {
+    // Calculate Doppler shift based on relative position of observer to source motion
+    // Returns a multiplier: >1 = approaching (higher freq), <1 = receding (lower freq)
+
+    if (mach < 0.01) return 1; // No shift at rest
+
+    // Vector from pulse center to observer
+    let dx = observerX - pulseX;
+    let dy = observerY - pulseY;
+
+    // Normalize
+    let d = sqrt(dx * dx + dy * dy);
+    if (d < 1) return 1;
+
+    dx /= d;
+    dy /= d;
+
+    // Motion direction (source moving right in moving mode, waves drifting right in wind mode)
+    let motionDirX = 1;
+
+    // Dot product gives how much observer is in direction of motion
+    // Positive = observer ahead (approaching), negative = observer behind (receding)
+    let alignment = dx * motionDirX;
+
+    // Doppler formula: f_observed = f_source * c / (c - v_source * cos(theta))
+    // Where theta is angle between source velocity and direction to observer
+    // Simplified: shift = 1 / (1 - M * alignment)
+    let shift;
+    if (movingSourceMode) {
+        // Source approaching observer
+        shift = 1 / (1 - mach * alignment * 0.5);
+    } else {
+        // Wind mode: observer in moving medium
+        shift = 1 + mach * alignment * 0.3;
+    }
+
+    return constrain(shift, 0.3, 3);
+}
+
 function draw() {
-    // Background with flash effect for sound barrier
+    // Background with flash effects
+    let bgR = 26, bgG = 26, bgB = 46;
+
     if (barrierFlash > 0) {
-        background(26 + barrierFlash * 50, 26 + barrierFlash * 50, 46 + barrierFlash * 100);
+        bgR += barrierFlash * 50;
+        bgG += barrierFlash * 50;
+        bgB += barrierFlash * 100;
         barrierFlash *= 0.9;
         if (barrierFlash < 0.01) barrierFlash = 0;
-    } else {
-        background(26, 26, 46);
+    }
+
+    if (sonicBoomFlash > 0) {
+        bgR += sonicBoomFlash * 100;
+        bgG += sonicBoomFlash * 50;
+        bgB += sonicBoomFlash * 20;
+        sonicBoomFlash *= 0.85;
+        if (sonicBoomFlash < 0.01) sonicBoomFlash = 0;
+    }
+
+    background(bgR, bgG, bgB);
+
+    // Decay observer flash
+    if (observerFlash > 0) {
+        observerFlash *= 0.8;
+        if (observerFlash < 0.01) observerFlash = 0;
     }
 
     // Update values from sliders
@@ -232,9 +368,15 @@ function draw() {
             }
         }
 
-        // Update pulses
+        // Update pulses and detect observer crossings
+        let wavesHitThisFrame = 0;
+
         for (let i = pulses.length - 1; i >= 0; i--) {
             let p = pulses[i];
+
+            // Calculate distance to observer before update
+            let distBefore = dist(p.x, p.y, observerX, observerY);
+
             p.radius += speedOfSound;
 
             // In wind mode, drift the pulses
@@ -242,10 +384,44 @@ function draw() {
                 p.x += mach * speedOfSound;
             }
 
+            // Calculate distance to observer after update
+            let distAfter = dist(p.x, p.y, observerX, observerY);
+
+            // Check if wave crossed observer (radius passed through observer distance)
+            let radiusBefore = p.radius - speedOfSound;
+            let radiusAfter = p.radius;
+
+            if (radiusBefore < distBefore && radiusAfter >= distAfter &&
+                distAfter <= radiusAfter && distBefore >= radiusBefore) {
+                // Wave crossed the observer!
+                wavesHitThisFrame++;
+                observerWaveHits.push(millis());
+                observerFlash = 1;
+
+                // Calculate Doppler shift based on observer position relative to source motion
+                let dopplerShift = calculateDopplerShift(p.x, p.y);
+                playObserverSound(dopplerShift);
+            }
+
             // Remove pulses that are too large or off screen
             if (p.radius > 600 || p.x - p.radius > width + 100) {
                 pulses.splice(i, 1);
             }
+        }
+
+        // Sonic boom: multiple waves hitting at once in supersonic mode
+        if (wavesHitThisFrame >= 3 && mach > 1) {
+            sonicBoomFlash = 1;
+            playSonicBoom();
+        }
+
+        // Calculate observed frequency (waves per second over last 2 seconds)
+        let now = millis();
+        observerWaveHits = observerWaveHits.filter(t => now - t < 2000);
+        if (observerWaveHits.length > 1) {
+            observedFrequency = observerWaveHits.length / 2; // waves per second
+        } else {
+            observedFrequency = 0;
         }
     }
 
@@ -265,6 +441,9 @@ function draw() {
     noStroke();
     circle(sourceX, sourceY, 14);
 
+    // Draw observer point
+    drawObserver();
+
     // Draw geometry explanation when supersonic
     if (mach > 1) {
         drawGeometry();
@@ -272,6 +451,65 @@ function draw() {
 
     // Display info
     drawInfo();
+}
+
+function drawObserver() {
+    // Draw observer with flash effect when wave hits
+    let baseSize = 16;
+    let flashSize = baseSize + observerFlash * 20;
+
+    // Glow effect when hit
+    if (observerFlash > 0.1) {
+        noStroke();
+        fill(100, 255, 100, observerFlash * 150);
+        circle(observerX, observerY, flashSize + 20);
+    }
+
+    // Observer point (green)
+    stroke(50, 200, 50);
+    strokeWeight(2);
+    fill(100, 255, 100, 200);
+    circle(observerX, observerY, flashSize);
+
+    // Crosshair
+    stroke(50, 200, 50);
+    strokeWeight(1);
+    line(observerX - 12, observerY, observerX + 12, observerY);
+    line(observerX, observerY - 12, observerX, observerY + 12);
+
+    // Label
+    fill(100, 255, 100);
+    noStroke();
+    textSize(11);
+    textAlign(CENTER);
+    text('OBSERVER', observerX, observerY - 20);
+    textSize(10);
+    fill(200);
+    text('(drag to move)', observerX, observerY + 28);
+
+    // Frequency display near observer
+    if (observedFrequency > 0 || observerWaveHits.length > 0) {
+        textAlign(LEFT);
+        textSize(12);
+
+        // Calculate current Doppler shift for display
+        let currentShift = calculateDopplerShift(sourceX, sourceY);
+
+        fill(100, 255, 100);
+        text(`Observed: ${observedFrequency.toFixed(1)} waves/sec`, observerX + 25, observerY - 5);
+
+        // Show shift direction
+        if (currentShift > 1.05) {
+            fill(100, 150, 255);
+            text(`Shift: +${((currentShift - 1) * 100).toFixed(0)}% (blue)`, observerX + 25, observerY + 10);
+        } else if (currentShift < 0.95) {
+            fill(255, 100, 100);
+            text(`Shift: ${((currentShift - 1) * 100).toFixed(0)}% (red)`, observerX + 25, observerY + 10);
+        } else {
+            fill(200);
+            text('Shift: ~0% (neutral)', observerX + 25, observerY + 10);
+        }
+    }
 }
 
 function drawDopplerCircle(cx, cy, radius, alpha) {

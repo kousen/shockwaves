@@ -37,11 +37,13 @@ Open `index.html` directly in Firefox or Safari. (Chrome blocks local script loa
   - *Moving Source mode* - Source travels through stationary medium (like an aircraft)
 
 ### Visual Elements
+- **Real-world speed display** - Shows velocity in mph and km/h alongside Mach number
 - **Mach cone lines** - Yellow lines showing the shock wave envelope when supersonic
 - **Doppler color shift** - Waves show blue shift (approaching/compressed) and red shift (receding/stretched)
 - **Geometry diagram** - Upper-right triangle showing the sin(θ) = 1/M relationship
 - **Sound barrier flash** - Screen flashes when crossing M = 1
 - **Color-coded status** - Green (subsonic), yellow (sonic), red (supersonic)
+- **Labeled elements** - Source and Observer points are clearly labeled
 
 ### Controls
 | Control | Function |
@@ -52,6 +54,17 @@ Open `index.html` directly in Firefox or Safari. (Chrome blocks local script loa
 | Reset | Clear all waves and restart |
 | Mode | Toggle between Wind and Moving Source modes |
 | Sound | Enable/disable audio pulses |
+| ? | Show/hide keyboard shortcuts help |
+
+### Keyboard Shortcuts
+| Key | Action |
+|-----|--------|
+| Space | Pause / Play |
+| ← → | Decrease / Increase Mach number |
+| R | Reset simulation |
+| M | Toggle mode |
+| S | Toggle sound |
+| H or ? | Toggle help overlay |
 
 ### Presets
 Quick-access buttons for real-world examples:

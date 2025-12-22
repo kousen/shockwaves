@@ -39,6 +39,13 @@ let observedFrequency = 0;
 let lastPulseDistances = new Map();  // Track each pulse's distance to observer
 let sonicBoomFlash = 0;
 
+// Help overlay
+let showHelp = false;
+
+// Speed of sound at sea level (for real-world display)
+const SPEED_OF_SOUND_MPH = 767;
+const SPEED_OF_SOUND_KMH = 1235;
+
 function setup() {
     let canvas = createCanvas(900, 500);
     canvas.parent('container');
@@ -112,6 +119,13 @@ function setup() {
     audioButton.mousePressed(toggleAudio);
     styleButton(audioButton);
 
+    let helpButton = createButton('?');
+    helpButton.parent(buttonRow);
+    helpButton.mousePressed(toggleHelp);
+    styleButton(helpButton);
+    helpButton.style('font-weight', 'bold');
+    helpButton.style('width', '36px');
+
     // Presets row
     let presetRow = createDiv('');
     presetRow.parent('container');
@@ -175,6 +189,40 @@ function toggleAudio() {
     }
     audioEnabled = !audioEnabled;
     audioButton.html(audioEnabled ? 'Sound: On' : 'Sound: Off');
+}
+
+function toggleHelp() {
+    showHelp = !showHelp;
+}
+
+// Keyboard controls
+function keyPressed() {
+    if (key === ' ') {
+        togglePause();
+        return false; // Prevent scrolling
+    }
+    if (keyCode === LEFT_ARROW) {
+        let newMach = max(0, mach - 0.1);
+        machSlider.value(newMach);
+        return false;
+    }
+    if (keyCode === RIGHT_ARROW) {
+        let newMach = min(3, mach + 0.1);
+        machSlider.value(newMach);
+        return false;
+    }
+    if (key === 'r' || key === 'R') {
+        resetSimulation();
+    }
+    if (key === 'm' || key === 'M') {
+        toggleMode();
+    }
+    if (key === 's' || key === 'S') {
+        toggleAudio();
+    }
+    if (key === 'h' || key === 'H' || key === '?') {
+        toggleHelp();
+    }
 }
 
 // Mouse handling for dragging observer
@@ -441,6 +489,12 @@ function draw() {
     noStroke();
     circle(sourceX, sourceY, 14);
 
+    // Source label
+    fill(255, 100, 100);
+    textSize(11);
+    textAlign(CENTER);
+    text('SOURCE', sourceX, sourceY - 18);
+
     // Draw observer point
     drawObserver();
 
@@ -656,29 +710,35 @@ function drawInfo() {
     }
     text(`M = ${mach.toFixed(2)}`, 20, 30);
 
-    fill(255);
+    // Real-world speed
+    let speedMph = Math.round(mach * SPEED_OF_SOUND_MPH);
+    let speedKmh = Math.round(mach * SPEED_OF_SOUND_KMH);
+    fill(180);
+    textSize(12);
+    text(`${speedMph.toLocaleString()} mph / ${speedKmh.toLocaleString()} km/h`, 20, 48);
+
     textSize(14);
 
     if (mach < 1) {
         fill(100, 200, 100);
-        text('SUBSONIC', 20, 52);
+        text('SUBSONIC', 20, 68);
         fill(200);
         textSize(12);
-        text('Waves outrun the source', 20, 70);
+        text('Waves outrun the source', 20, 86);
     } else if (mach === 1) {
         fill(255, 255, 100);
-        text('SONIC (M = 1)', 20, 52);
+        text('SONIC (M = 1)', 20, 68);
         fill(200);
         textSize(12);
-        text('Source matches wave speed', 20, 70);
+        text('Source matches wave speed', 20, 86);
     } else {
         fill(255, 100, 100);
-        text('SUPERSONIC', 20, 52);
+        text('SUPERSONIC', 20, 68);
         let angle = degrees(asin(1 / mach));
         fill(200);
         textSize(12);
-        text(`Mach angle: ${angle.toFixed(1)}°`, 20, 70);
-        text('Source outruns waves → shock cone', 20, 88);
+        text(`Mach angle: ${angle.toFixed(1)}°`, 20, 86);
+        text('Source outruns waves → shock cone', 20, 102);
     }
 
     // Mode indicator
@@ -700,4 +760,85 @@ function drawInfo() {
         fill(255, 80, 80);
         text('● Red shift (receding)', 20, height - 18);
     }
+
+    // Help overlay
+    if (showHelp) {
+        drawHelpOverlay();
+    }
+}
+
+function drawHelpOverlay() {
+    // Semi-transparent background
+    fill(0, 0, 0, 200);
+    noStroke();
+    rectMode(CENTER);
+    rect(width / 2, height / 2, 400, 340, 10);
+
+    // Title
+    fill(255);
+    textAlign(CENTER);
+    textSize(18);
+    text('Keyboard Shortcuts', width / 2, height / 2 - 140);
+
+    // Shortcuts list
+    textSize(13);
+    textAlign(LEFT);
+    let x = width / 2 - 170;
+    let y = height / 2 - 100;
+    let lineHeight = 24;
+
+    fill(100, 200, 255);
+    text('Space', x, y);
+    fill(200);
+    text('Pause / Play', x + 100, y);
+
+    y += lineHeight;
+    fill(100, 200, 255);
+    text('← →', x, y);
+    fill(200);
+    text('Adjust Mach number', x + 100, y);
+
+    y += lineHeight;
+    fill(100, 200, 255);
+    text('R', x, y);
+    fill(200);
+    text('Reset simulation', x + 100, y);
+
+    y += lineHeight;
+    fill(100, 200, 255);
+    text('M', x, y);
+    fill(200);
+    text('Toggle mode (Wind / Moving)', x + 100, y);
+
+    y += lineHeight;
+    fill(100, 200, 255);
+    text('S', x, y);
+    fill(200);
+    text('Toggle sound', x + 100, y);
+
+    y += lineHeight;
+    fill(100, 200, 255);
+    text('H or ?', x, y);
+    fill(200);
+    text('Toggle this help', x + 100, y);
+
+    // Mouse instructions
+    y += lineHeight + 10;
+    fill(100, 255, 100);
+    textSize(14);
+    text('Mouse', x, y);
+
+    y += lineHeight;
+    fill(200);
+    textSize(13);
+    text('Drag the green OBSERVER to measure waves', x, y);
+    text('at different positions', x, y + lineHeight);
+
+    // Dismiss hint
+    textAlign(CENTER);
+    fill(150);
+    textSize(11);
+    text('Press any key or click ? to close', width / 2, height / 2 + 155);
+
+    rectMode(CORNER); // Reset
 }

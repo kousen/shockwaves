@@ -46,17 +46,32 @@ let showHelp = false;
 const SPEED_OF_SOUND_MPH = 767;
 const SPEED_OF_SOUND_KMH = 1235;
 
+// Responsive scaling
+let isMobile = false;
+let scaleFactor = 1;
+
+function getCanvasSize() {
+    let maxWidth = min(windowWidth - 20, 900);
+    let aspectRatio = 900 / 500;
+    let w = maxWidth;
+    let h = maxWidth / aspectRatio;
+
+    // On very small screens, allow slightly taller aspect ratio
+    if (windowWidth < 500) {
+        h = min(h, windowHeight * 0.5);
+        w = h * aspectRatio;
+    }
+
+    return { w: floor(w), h: floor(h) };
+}
+
 function setup() {
-    let canvas = createCanvas(900, 500);
+    let size = getCanvasSize();
+    let canvas = createCanvas(size.w, size.h);
     canvas.parent('container');
 
-    sourceStartX = 150;
-    sourceX = sourceStartX;
-    sourceY = height / 2;
-
-    // Initialize observer position (right side of canvas)
-    observerX = width - 200;
-    observerY = height / 2;
+    updateScaling();
+    initializePositions();
 
     // Create controls container
     let controls = createDiv('');
@@ -153,6 +168,47 @@ function setup() {
         });
         styleButton(btn, true);
     }
+}
+
+function updateScaling() {
+    scaleFactor = width / 900;
+    isMobile = windowWidth < 600;
+}
+
+// Helper to scale values for responsive display
+function scaled(value) {
+    return value * scaleFactor;
+}
+
+function initializePositions() {
+    sourceStartX = width * 0.17; // ~150/900
+    sourceX = sourceStartX;
+    sourceY = height / 2;
+
+    // Initialize observer position (right side of canvas)
+    observerX = width - (width * 0.22); // ~200/900
+    observerY = height / 2;
+}
+
+function windowResized() {
+    let size = getCanvasSize();
+    resizeCanvas(size.w, size.h);
+    updateScaling();
+
+    // Scale positions proportionally
+    let oldSourceStartX = sourceStartX;
+    initializePositions();
+
+    // Keep source at same relative position if in wind mode
+    if (!movingSourceMode) {
+        sourceX = sourceStartX;
+    } else {
+        sourceX = (sourceX / oldSourceStartX) * sourceStartX;
+    }
+
+    // Keep observer at same relative position
+    observerX = constrain(observerX * scaleFactor, 20, width - 20);
+    observerY = constrain(observerY, 20, height - 20);
 }
 
 function styleButton(btn, small = false) {
@@ -487,13 +543,13 @@ function draw() {
     // Draw source point
     fill(255, 100, 100);
     noStroke();
-    circle(sourceX, sourceY, 14);
+    circle(sourceX, sourceY, scaled(14));
 
     // Source label
     fill(255, 100, 100);
-    textSize(11);
+    textSize(scaled(11));
     textAlign(CENTER);
-    text('SOURCE', sourceX, sourceY - 18);
+    text('SOURCE', sourceX, sourceY - scaled(18));
 
     // Draw observer point
     drawObserver();
@@ -509,59 +565,61 @@ function draw() {
 
 function drawObserver() {
     // Draw observer with flash effect when wave hits
-    let baseSize = 16;
-    let flashSize = baseSize + observerFlash * 20;
+    let baseSize = scaled(16);
+    let flashSize = baseSize + observerFlash * scaled(20);
 
     // Glow effect when hit
     if (observerFlash > 0.1) {
         noStroke();
         fill(100, 255, 100, observerFlash * 150);
-        circle(observerX, observerY, flashSize + 20);
+        circle(observerX, observerY, flashSize + scaled(20));
     }
 
     // Observer point (green)
     stroke(50, 200, 50);
-    strokeWeight(2);
+    strokeWeight(scaled(2));
     fill(100, 255, 100, 200);
     circle(observerX, observerY, flashSize);
 
     // Crosshair
     stroke(50, 200, 50);
     strokeWeight(1);
-    line(observerX - 12, observerY, observerX + 12, observerY);
-    line(observerX, observerY - 12, observerX, observerY + 12);
+    let crossSize = scaled(12);
+    line(observerX - crossSize, observerY, observerX + crossSize, observerY);
+    line(observerX, observerY - crossSize, observerX, observerY + crossSize);
 
     // Label
     fill(100, 255, 100);
     noStroke();
-    textSize(11);
+    textSize(scaled(11));
     textAlign(CENTER);
-    text('OBSERVER', observerX, observerY - 20);
-    textSize(10);
+    text('OBSERVER', observerX, observerY - scaled(20));
+    textSize(scaled(9));
     fill(200);
-    text('(drag to move)', observerX, observerY + 28);
+    text(isMobile ? '(drag)' : '(drag to move)', observerX, observerY + scaled(28));
 
-    // Frequency display near observer
-    if (observedFrequency > 0 || observerWaveHits.length > 0) {
+    // Frequency display near observer (hide on very small screens to avoid clutter)
+    if ((observedFrequency > 0 || observerWaveHits.length > 0) && width > 400) {
         textAlign(LEFT);
-        textSize(12);
+        textSize(scaled(12));
 
         // Calculate current Doppler shift for display
         let currentShift = calculateDopplerShift(sourceX, sourceY);
 
+        let textX = observerX + scaled(25);
         fill(100, 255, 100);
-        text(`Observed: ${observedFrequency.toFixed(1)} waves/sec`, observerX + 25, observerY - 5);
+        text(`${observedFrequency.toFixed(1)} waves/sec`, textX, observerY - scaled(5));
 
         // Show shift direction
         if (currentShift > 1.05) {
             fill(100, 150, 255);
-            text(`Shift: +${((currentShift - 1) * 100).toFixed(0)}% (blue)`, observerX + 25, observerY + 10);
+            text(`+${((currentShift - 1) * 100).toFixed(0)}% blue`, textX, observerY + scaled(10));
         } else if (currentShift < 0.95) {
             fill(255, 100, 100);
-            text(`Shift: ${((currentShift - 1) * 100).toFixed(0)}% (red)`, observerX + 25, observerY + 10);
+            text(`${((currentShift - 1) * 100).toFixed(0)}% red`, textX, observerY + scaled(10));
         } else {
             fill(200);
-            text('Shift: ~0% (neutral)', observerX + 25, observerY + 10);
+            text('~0%', textX, observerY + scaled(10));
         }
     }
 }
@@ -643,10 +701,13 @@ function drawMachCone() {
 }
 
 function drawGeometry() {
+    // Hide geometry on small screens - not enough room
+    if (isMobile) return;
+
     // Draw explanatory triangle in corner
-    let triX = width - 150;
-    let triY = 60;
-    let triSize = 80;
+    let triX = width - scaled(150);
+    let triY = scaled(60);
+    let triSize = scaled(80);
 
     let machAngle = asin(1 / mach);
 
@@ -665,40 +726,43 @@ function drawGeometry() {
     line(triX, triY, triX + triSize, triY + triSize * tan(machAngle));
 
     // Right angle marker
-    let markerSize = 8;
+    let markerSize = scaled(8);
     line(triX + triSize - markerSize, triY, triX + triSize - markerSize, triY + markerSize);
     line(triX + triSize - markerSize, triY + markerSize, triX + triSize, triY + markerSize);
 
     // Labels
     fill(255, 200, 50);
     noStroke();
-    textSize(11);
+    textSize(scaled(11));
     textAlign(CENTER);
-    text('v = M', triX + triSize/2, triY - 8);
+    text('v = M', triX + triSize/2, triY - scaled(8));
 
     textAlign(LEFT);
-    text('c = 1', triX + triSize + 5, triY + triSize * tan(machAngle) / 2);
+    text('c = 1', triX + triSize + scaled(5), triY + triSize * tan(machAngle) / 2);
 
     // Angle arc
     noFill();
     stroke(255, 200, 50, 150);
-    arc(triX, triY, 30, 30, 0, machAngle);
+    arc(triX, triY, scaled(30), scaled(30), 0, machAngle);
 
     fill(255, 200, 50);
     noStroke();
     textAlign(LEFT);
-    text('θ', triX + 18, triY + 15);
+    text('θ', triX + scaled(18), triY + scaled(15));
 
     // Formula
-    textSize(12);
-    text(`sin(θ) = 1/M = ${(1/mach).toFixed(2)}`, triX - 30, triY + triSize * tan(machAngle) + 25);
+    textSize(scaled(12));
+    text(`sin(θ) = 1/M = ${(1/mach).toFixed(2)}`, triX - scaled(30), triY + triSize * tan(machAngle) + scaled(25));
 }
 
 function drawInfo() {
     fill(255);
     noStroke();
-    textSize(18);
+    textSize(scaled(18));
     textAlign(LEFT);
+
+    let margin = scaled(20);
+    let lineY = scaled(30);
 
     // Mach number with color coding
     if (mach < 1) {
@@ -708,57 +772,57 @@ function drawInfo() {
     } else {
         fill(255, 100, 100);
     }
-    text(`M = ${mach.toFixed(2)}`, 20, 30);
+    text(`M = ${mach.toFixed(2)}`, margin, lineY);
 
     // Real-world speed
     let speedMph = Math.round(mach * SPEED_OF_SOUND_MPH);
     let speedKmh = Math.round(mach * SPEED_OF_SOUND_KMH);
     fill(180);
-    textSize(12);
-    text(`${speedMph.toLocaleString()} mph / ${speedKmh.toLocaleString()} km/h`, 20, 48);
+    textSize(scaled(12));
+    text(`${speedMph.toLocaleString()} mph / ${speedKmh.toLocaleString()} km/h`, margin, scaled(48));
 
-    textSize(14);
+    textSize(scaled(14));
 
     if (mach < 1) {
         fill(100, 200, 100);
-        text('SUBSONIC', 20, 68);
+        text('SUBSONIC', margin, scaled(68));
         fill(200);
-        textSize(12);
-        text('Waves outrun the source', 20, 86);
+        textSize(scaled(12));
+        text('Waves outrun the source', margin, scaled(86));
     } else if (mach === 1) {
         fill(255, 255, 100);
-        text('SONIC (M = 1)', 20, 68);
+        text('SONIC (M = 1)', margin, scaled(68));
         fill(200);
-        textSize(12);
-        text('Source matches wave speed', 20, 86);
+        textSize(scaled(12));
+        text('Source matches wave speed', margin, scaled(86));
     } else {
         fill(255, 100, 100);
-        text('SUPERSONIC', 20, 68);
+        text('SUPERSONIC', margin, scaled(68));
         let angle = degrees(asin(1 / mach));
         fill(200);
-        textSize(12);
-        text(`Mach angle: ${angle.toFixed(1)}°`, 20, 86);
-        text('Source outruns waves → shock cone', 20, 102);
+        textSize(scaled(12));
+        text(`Mach angle: ${angle.toFixed(1)}°`, margin, scaled(86));
+        text('Source outruns waves → shock cone', margin, scaled(102));
     }
 
     // Mode indicator
     fill(150);
-    textSize(11);
+    textSize(scaled(11));
     textAlign(RIGHT);
-    text(movingSourceMode ? 'Source moving through medium' : 'Medium flowing past source', width - 20, height - 15);
+    text(movingSourceMode ? 'Source moving through medium' : 'Medium flowing past source', width - margin, height - scaled(15));
 
-    // Doppler effect legend (bottom left)
-    if (mach > 0.1) {
+    // Doppler effect legend (bottom left) - hide on very small screens
+    if (mach > 0.1 && !isMobile) {
         textAlign(LEFT);
-        textSize(11);
+        textSize(scaled(11));
 
         // Blue indicator
         fill(50, 150, 255);
-        text('● Blue shift (approaching)', 20, height - 35);
+        text('● Blue shift (approaching)', margin, height - scaled(35));
 
         // Red indicator
         fill(255, 80, 80);
-        text('● Red shift (receding)', 20, height - 18);
+        text('● Red shift (receding)', margin, height - scaled(18));
     }
 
     // Help overlay
@@ -769,76 +833,84 @@ function drawInfo() {
 
 function drawHelpOverlay() {
     // Semi-transparent background
-    fill(0, 0, 0, 200);
+    fill(0, 0, 0, 220);
     noStroke();
     rectMode(CENTER);
-    rect(width / 2, height / 2, 400, 340, 10);
+
+    let boxWidth = min(width - 40, 400);
+    let boxHeight = min(height - 40, 340);
+    rect(width / 2, height / 2, boxWidth, boxHeight, 10);
+
+    // Scale for overlay
+    let s = min(scaleFactor, 1);
+    let fontSize = max(11, 13 * s);
+    let titleSize = max(14, 18 * s);
+    let lineHeight = max(18, 24 * s);
+    let colOffset = max(70, 100 * s);
 
     // Title
     fill(255);
     textAlign(CENTER);
-    textSize(18);
-    text('Keyboard Shortcuts', width / 2, height / 2 - 140);
+    textSize(titleSize);
+    text('Keyboard Shortcuts', width / 2, height / 2 - boxHeight * 0.4);
 
     // Shortcuts list
-    textSize(13);
+    textSize(fontSize);
     textAlign(LEFT);
-    let x = width / 2 - 170;
-    let y = height / 2 - 100;
-    let lineHeight = 24;
+    let x = width / 2 - boxWidth * 0.4;
+    let y = height / 2 - boxHeight * 0.28;
 
     fill(100, 200, 255);
     text('Space', x, y);
     fill(200);
-    text('Pause / Play', x + 100, y);
+    text('Pause / Play', x + colOffset, y);
 
     y += lineHeight;
     fill(100, 200, 255);
     text('← →', x, y);
     fill(200);
-    text('Adjust Mach number', x + 100, y);
+    text('Adjust Mach', x + colOffset, y);
 
     y += lineHeight;
     fill(100, 200, 255);
     text('R', x, y);
     fill(200);
-    text('Reset simulation', x + 100, y);
+    text('Reset', x + colOffset, y);
 
     y += lineHeight;
     fill(100, 200, 255);
     text('M', x, y);
     fill(200);
-    text('Toggle mode (Wind / Moving)', x + 100, y);
+    text('Toggle mode', x + colOffset, y);
 
     y += lineHeight;
     fill(100, 200, 255);
     text('S', x, y);
     fill(200);
-    text('Toggle sound', x + 100, y);
+    text('Toggle sound', x + colOffset, y);
 
     y += lineHeight;
     fill(100, 200, 255);
     text('H or ?', x, y);
     fill(200);
-    text('Toggle this help', x + 100, y);
+    text('Toggle help', x + colOffset, y);
 
-    // Mouse instructions
-    y += lineHeight + 10;
+    // Touch/Mouse instructions
+    y += lineHeight + 5;
     fill(100, 255, 100);
-    textSize(14);
-    text('Mouse', x, y);
+    textSize(fontSize);
+    text(isMobile ? 'Touch' : 'Mouse', x, y);
 
     y += lineHeight;
     fill(200);
-    textSize(13);
-    text('Drag the green OBSERVER to measure waves', x, y);
-    text('at different positions', x, y + lineHeight);
+    text('Drag OBSERVER to measure', x, y);
+    text('waves at different positions', x, y + lineHeight * 0.8);
 
     // Dismiss hint
     textAlign(CENTER);
     fill(150);
-    textSize(11);
-    text('Press any key or click ? to close', width / 2, height / 2 + 155);
+    textSize(max(10, fontSize * 0.85));
+    text(isMobile ? 'Tap ? to close' : 'Press any key or click ? to close', width / 2, height / 2 + boxHeight * 0.42);
 
     rectMode(CORNER); // Reset
 }

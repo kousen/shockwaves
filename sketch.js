@@ -1,5 +1,8 @@
 // Shock Wave Formation Simulation
 // Demonstrates how shock waves form at supersonic speeds
+//
+// Note: Pure physics calculations are also available in physics.js for testing.
+// This file contains the p5.js visualization code with inline physics for browser compatibility.
 
 let pulses = [];
 let mach = 0.5;
@@ -36,7 +39,6 @@ let draggingObserver = false;
 let observerFlash = 0;
 let observerWaveHits = [];      // Timestamps of wave arrivals
 let observedFrequency = 0;
-let lastPulseDistances = new Map();  // Track each pulse's distance to observer
 let sonicBoomFlash = 0;
 
 // Help overlay
@@ -241,7 +243,8 @@ function toggleMode() {
 
 function toggleAudio() {
     if (!audioContext) {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const AudioContextClass = window.AudioContext || window['webkitAudioContext'];
+        audioContext = new AudioContextClass();
     }
     audioEnabled = !audioEnabled;
     audioButton.html(audioEnabled ? 'Sound: On' : 'Sound: Off');

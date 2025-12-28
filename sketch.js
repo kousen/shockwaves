@@ -78,10 +78,10 @@ function setup() {
     // Create controls container
     let controls = createDiv('');
     controls.parent('container');
-    controls.style('margin-top', isMobilePortrait() ? '8px' : '15px');
+    controls.style('margin-top', '15px');
     controls.style('display', 'flex');
     controls.style('flex-wrap', 'wrap');
-    controls.style('gap', isMobilePortrait() ? '8px' : '20px');
+    controls.style('gap', '20px');
     controls.style('justify-content', 'center');
     controls.style('align-items', 'flex-start');
 
@@ -110,9 +110,9 @@ function setup() {
     // Buttons row
     let buttonRow = createDiv('');
     buttonRow.parent('container');
-    buttonRow.style('margin-top', isMobilePortrait() ? '5px' : '10px');
+    buttonRow.style('margin-top', '10px');
     buttonRow.style('display', 'flex');
-    buttonRow.style('gap', isMobilePortrait() ? '6px' : '10px');
+    buttonRow.style('gap', '10px');
     buttonRow.style('justify-content', 'center');
     buttonRow.style('flex-wrap', 'wrap');
 
@@ -146,9 +146,9 @@ function setup() {
     // Presets row
     let presetRow = createDiv('');
     presetRow.parent('container');
-    presetRow.style('margin-top', isMobilePortrait() ? '5px' : '10px');
+    presetRow.style('margin-top', '10px');
     presetRow.style('display', 'flex');
-    presetRow.style('gap', isMobilePortrait() ? '5px' : '8px');
+    presetRow.style('gap', '8px');
     presetRow.style('justify-content', 'center');
     presetRow.style('flex-wrap', 'wrap');
 
@@ -175,14 +175,6 @@ function setup() {
 function updateScaling() {
     scaleFactor = width / 900;
     isMobile = windowWidth < 600;
-}
-
-function isPortrait() {
-    return windowHeight > windowWidth;
-}
-
-function isMobilePortrait() {
-    return isMobile && isPortrait();
 }
 
 // Helper to scale values for responsive display

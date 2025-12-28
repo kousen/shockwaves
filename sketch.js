@@ -58,18 +58,17 @@ function getCanvasSize() {
     let w = maxWidth;
     let h = maxWidth / aspectRatio;
 
-    // Portrait mode: give more space to canvas, less to controls
+    // Portrait mode: prioritize vertical space
     let isPortrait = windowHeight > windowWidth;
     if (isPortrait && windowWidth < 600) {
-        // In portrait mode, canvas takes ~60% of viewport height
-        // This leaves ~40% for title + controls
-        h = windowHeight * 0.60;
-        w = h * aspectRatio;
-        // Don't exceed screen width
-        if (w > maxWidth) {
-            w = maxWidth;
-            h = w / aspectRatio;
-        }
+        // Use full width available
+        w = maxWidth;
+        // Calculate height to fill most of screen (60% of viewport)
+        // but respect a reasonable aspect ratio for portrait
+        let targetHeight = windowHeight * 0.60;
+        // Use wider aspect ratio for portrait (more square-ish)
+        let portraitAspectRatio = 1.2; // instead of 1.8
+        h = min(targetHeight, w / portraitAspectRatio);
     } else if (windowWidth < 500) {
         // Landscape small screens
         h = min(h, windowHeight * 0.5);

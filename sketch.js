@@ -63,12 +63,9 @@ function getCanvasSize() {
     if (isPortrait && windowWidth < 600) {
         // Use full width available
         w = maxWidth;
-        // Calculate height to fill most of screen (60% of viewport)
-        // but respect a reasonable aspect ratio for portrait
-        let targetHeight = windowHeight * 0.60;
-        // Use wider aspect ratio for portrait (more square-ish)
-        let portraitAspectRatio = 1.2; // instead of 1.8
-        h = min(targetHeight, w / portraitAspectRatio);
+        // Use 60% of viewport height - no aspect ratio constraint!
+        // The canvas can be taller/more square in portrait mode
+        h = windowHeight * 0.60;
     } else if (windowWidth < 500) {
         // Landscape small screens
         h = min(h, windowHeight * 0.5);
